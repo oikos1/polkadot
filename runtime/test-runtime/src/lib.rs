@@ -52,9 +52,10 @@ use sp_core::OpaqueMetadata;
 use sp_staking::SessionIndex;
 use frame_support::{
 	parameter_types, construct_runtime, debug,
-	traits::{KeyOwnerProofSystem, Randomness},
+	traits::{Get, KeyOwnerProofSystem, Randomness},
 	weights::Weight,
 };
+use authority_discovery_primitives::AuthorityId as AuthorityDiscoveryId;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use session::historical as session_historical;
 
@@ -165,8 +166,8 @@ impl<C> system::offchain::SendTransactionTypes<C> for Runtime where
 }
 
 parameter_types! {
-	pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
-	pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
+	pub storage EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
+	pub storage ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
 }
 
 impl babe::Trait for Runtime {
@@ -178,7 +179,7 @@ impl babe::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const IndexDeposit: Balance = 1 * DOLLARS;
+	pub storage IndexDeposit: Balance = 1 * DOLLARS;
 }
 
 impl indices::Trait for Runtime {
@@ -189,7 +190,7 @@ impl indices::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 1 * CENTS;
+	pub storage ExistentialDeposit: Balance = 1 * CENTS;
 }
 
 impl balances::Trait for Runtime {
@@ -201,7 +202,7 @@ impl balances::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const TransactionByteFee: Balance = 10 * MILLICENTS;
+	pub storage TransactionByteFee: Balance = 10 * MILLICENTS;
 }
 
 impl transaction_payment::Trait for Runtime {
@@ -213,7 +214,8 @@ impl transaction_payment::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MinimumPeriod: u64 = 0;
+	pub storage SlotDuration: u64 = SLOT_DURATION;
+	pub storage MinimumPeriod: u64 = SlotDuration::get() / 2;
 }
 impl timestamp::Trait for Runtime {
 	type Moment = u64;
@@ -222,7 +224,7 @@ impl timestamp::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const UncleGenerations: u32 = 0;
+	pub storage UncleGenerations: u32 = 0;
 }
 
 // TODO: substrate#2986 implement this properly
@@ -234,8 +236,8 @@ impl authorship::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const Period: BlockNumber = 10 * MINUTES;
-	pub const Offset: BlockNumber = 0;
+	pub storage Period: BlockNumber = 10 * MINUTES;
+	pub storage Offset: BlockNumber = 0;
 }
 
 impl_opaque_keys! {
@@ -247,7 +249,7 @@ impl_opaque_keys! {
 }
 
 parameter_types! {
-	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
+	pub storage DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
 }
 
 impl session::Trait for Runtime {
@@ -280,16 +282,16 @@ pallet_staking_reward_curve::build! {
 
 parameter_types! {
 	// Six sessions in an era (6 hours).
-	pub const SessionsPerEra: SessionIndex = 6;
+	pub storage SessionsPerEra: SessionIndex = 6;
 	// 28 eras for unbonding (7 days).
-	pub const BondingDuration: staking::EraIndex = 28;
+	pub storage BondingDuration: staking::EraIndex = 28;
 	// 28 eras in which slashes can be cancelled (7 days).
-	pub const SlashDeferDuration: staking::EraIndex = 28;
+	pub storage SlashDeferDuration: staking::EraIndex = 28;
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
-	pub const MaxNominatorRewardedPerValidator: u32 = 64;
-	pub const ElectionLookahead: BlockNumber = 0;
-	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
-	pub const MaxIterations: u32 = 10;
+	pub storage MaxNominatorRewardedPerValidator: u32 = 64;
+	pub storage ElectionLookahead: BlockNumber = 0;
+	pub storage StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
+	pub storage MaxIterations: u32 = 10;
 	pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
 }
 
@@ -345,12 +347,12 @@ impl attestations::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MaxCodeSize: u32 = 10 * 1024 * 1024; // 10 MB
-	pub const MaxHeadDataSize: u32 = 20 * 1024; // 20 KB
+	pub storage MaxCodeSize: u32 = 10 * 1024 * 1024; // 10 MB
+	pub storage MaxHeadDataSize: u32 = 20 * 1024; // 20 KB
 
-	pub const ValidationUpgradeFrequency: BlockNumber = 2;
-	pub const ValidationUpgradeDelay: BlockNumber = 1;
-	pub const SlashPeriod: BlockNumber = 1 * MINUTES;
+	pub storage ValidationUpgradeFrequency: BlockNumber = 2;
+	pub storage ValidationUpgradeDelay: BlockNumber = 1;
+	pub storage SlashPeriod: BlockNumber = 1 * MINUTES;
 }
 
 impl parachains::Trait for Runtime {
@@ -426,7 +428,7 @@ impl system::offchain::SigningTypes for Runtime {
 }
 
 parameter_types! {
-	pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * MaximumBlockWeight::get();
+	pub storage OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * MaximumBlockWeight::get();
 }
 
 impl offences::Trait for Runtime {
@@ -436,10 +438,12 @@ impl offences::Trait for Runtime {
 	type WeightSoftLimit = OffencesWeightSoftLimit;
 }
 
+impl authority_discovery::Trait for Runtime {}
+
 parameter_types! {
-	pub const ParathreadDeposit: Balance = 5 * DOLLARS;
+	pub storage ParathreadDeposit: Balance = 5 * DOLLARS;
 	pub const QueueSize: usize = 2;
-	pub const MaxRetries: u32 = 3;
+	pub storage MaxRetries: u32 = 3;
 }
 
 impl registrar::Trait for Runtime {
@@ -453,8 +457,8 @@ impl registrar::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const LeasePeriod: BlockNumber = 100_000;
-	pub const EndingPeriod: BlockNumber = 1000;
+	pub storage LeasePeriod: BlockNumber = 100_000;
+	pub storage EndingPeriod: BlockNumber = 1000;
 }
 
 impl slots::Trait for Runtime {
@@ -478,7 +482,7 @@ impl claims::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 100 * DOLLARS;
+	pub storage MinVestedTransfer: Balance = 100 * DOLLARS;
 }
 
 impl vesting::Trait for Runtime {
@@ -486,6 +490,11 @@ impl vesting::Trait for Runtime {
 	type Currency = Balances;
 	type BlockNumberToBalance = ConvertInto;
 	type MinVestedTransfer = MinVestedTransfer;
+}
+
+impl sudo::Trait for Runtime {
+	type Event = Event;
+	type Call = Call;
 }
 
 construct_runtime! {
@@ -513,6 +522,7 @@ construct_runtime! {
 		Historical: session_historical::{Module},
 		Session: session::{Module, Call, Storage, Event, Config<T>},
 		Grandpa: grandpa::{Module, Call, Storage, Config, Event},
+		AuthorityDiscovery: authority_discovery::{Module, Call, Config},
 
 		// Claims. Usable initially.
 		Claims: claims::{Module, Call, Storage, Event<T>, Config<T>, ValidateUnsigned},
@@ -526,6 +536,9 @@ construct_runtime! {
 
 		// Vesting. Usable initially, but removed once all vesting is finished.
 		Vesting: vesting::{Module, Call, Storage, Event<T>, Config<T>},
+
+		// Sudo. Last module.
+		Sudo: sudo::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 }
 
@@ -616,6 +629,20 @@ sp_api::impl_runtime_apis! {
 			tx: <Block as BlockT>::Extrinsic,
 		) -> TransactionValidity {
 			Executive::validate_transaction(source, tx)
+		}
+	}
+
+	impl offchain_primitives::OffchainWorkerApi<Block> for Runtime {
+		fn offchain_worker(header: &<Block as BlockT>::Header) {
+			Executive::offchain_worker(header)
+		}
+	}
+
+	impl authority_discovery_primitives::AuthorityDiscoveryApi<Block> for Runtime {
+		fn authorities() -> Vec<AuthorityDiscoveryId> {
+			// TODO and to fix
+			//AuthorityDiscovery::authorities()
+			Vec::new()
 		}
 	}
 
@@ -733,4 +760,66 @@ sp_api::impl_runtime_apis! {
 			TransactionPayment::query_info(uxt, len)
 		}
 	}
+}
+
+trait Config {
+	type EpochDuration: Get<u64>;
+	type ExpectedBlockTime: Get<Moment>;
+	type IndexDeposit: Get<Balance>;
+	type ExistentialDeposit: Get<Balance>;
+	type TransactionByteFee: Get<Balance>;
+	type MinimumPeriod: Get<u64>;
+	type UncleGenerations: Get<u32>;
+	type Period: Get<BlockNumber>;
+	type Offset: Get<BlockNumber>;
+	type DisabledValidatorsThreshold: Get<Perbill>;
+	type SessionsPerEra: Get<SessionIndex>;
+	type BondingDuration: Get<staking::EraIndex>;
+	type SlashDeferDuration: Get<staking::EraIndex>;
+	type MaxNominatorRewardedPerValidator: Get<u32>;
+	type ElectionLookahead: Get<BlockNumber>;
+	type StakingUnsignedPriority: Get<TransactionPriority>;
+	type MaxIterations: Get<u32>;
+	type MaxCodeSize: Get<u32>;
+	type MaxHeadDataSize: Get<u32>;
+	type ValidationUpgradeFrequency: Get<BlockNumber>;
+	type ValidationUpgradeDelay: Get<BlockNumber>;
+	type SlashPeriod: Get<BlockNumber>;
+	type OffencesWeightSoftLimit: Get<Weight>;
+	type ParathreadDeposit: Get<Balance>;
+	type MaxRetries: Get<u32>;
+	type LeasePeriod: Get<BlockNumber>;
+	type EndingPeriod: Get<BlockNumber>;
+	type MinVestedTransfer: Get<Balance>;
+}
+
+impl Config for Runtime {
+	type EpochDuration = EpochDuration;
+	type ExpectedBlockTime = ExpectedBlockTime;
+	type IndexDeposit = IndexDeposit;
+	type ExistentialDeposit = ExistentialDeposit;
+	type TransactionByteFee = TransactionByteFee;
+	type MinimumPeriod = MinimumPeriod;
+	type UncleGenerations = UncleGenerations;
+	type Period = Period;
+	type Offset = Offset;
+	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+	type SessionsPerEra = SessionsPerEra;
+	type BondingDuration = BondingDuration;
+	type SlashDeferDuration = SlashDeferDuration;
+	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
+	type ElectionLookahead = ElectionLookahead;
+	type StakingUnsignedPriority = StakingUnsignedPriority;
+	type MaxIterations = MaxIterations;
+	type MaxCodeSize = MaxCodeSize;
+	type MaxHeadDataSize = MaxHeadDataSize;
+	type ValidationUpgradeFrequency = ValidationUpgradeFrequency;
+	type ValidationUpgradeDelay = ValidationUpgradeDelay;
+	type SlashPeriod = SlashPeriod;
+	type OffencesWeightSoftLimit = OffencesWeightSoftLimit;
+	type ParathreadDeposit = ParathreadDeposit;
+	type MaxRetries = MaxRetries;
+	type LeasePeriod = LeasePeriod;
+	type EndingPeriod = EndingPeriod;
+	type MinVestedTransfer = MinVestedTransfer;
 }

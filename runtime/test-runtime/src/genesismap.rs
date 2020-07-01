@@ -67,6 +67,8 @@ impl GenesisConfig {
 			parachains: None,
 			registrar: None,
 			vesting: None,
+			authority_discovery: None,
+			sudo: None,
 		};
 		config.assimilate_storage(&mut storage).expect("Adding `system::GensisConfig` to the genesis");
 
